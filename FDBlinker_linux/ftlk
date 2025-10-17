@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve paths
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ADFR_HOME="${ADFR_HOME:-$(cd "$BIN_DIR/.." && pwd)}"
+
+# ---- interpreters ----------------------------------------------------
+# Python 3 to run ftlk.py (use current conda env by default)
+PY3="${PYTHON_EXE:-$(command -v python3 || true)}"
+if [[ -z "${PY3}" ]]; then
+  echo "[ftlk] ERROR: python3 not found. Activate your conda env, or set PYTHON_EXE." >&2
+  exit 1
+fi
+
+# Python 2 for ADFR/AGFR tools (bundled with ADFRsuite)
+ADFR_PY="${ADFR_PY:-$BIN_DIR/python2.7}"
+ADFR_PY_MGL="${ADFR_PY_MGL:-$BIN_DIR/pythonsh}"
+
+if [[ ! -x "$ADFR_PY" ]]; then
+  echo "[ftlk] ERROR: ADFR_PY not executable: $ADFR_PY" >&2
+  exit 2
+fi
+if [[ ! -x "$ADFR_PY_MGL" ]]; then
+  echo "[ftlk] ERROR: ADFR_PY_MGL not executable: $ADFR_PY_MGL" >&2
+  exit 3
+fi
+
+# ---- export environment so ftlk.py can see them ---------------------
+export ADFRHOME="$ADFR_HOME"
+export ADFR_PY
+export ADFR_PY_MGL
+# Make sure ftlk.py knows which Py3 to use for its own subprocesses (if any)
+export PYTHON_EXE="$PY3"
+
+# (Optional) If you *want* to force Open Babel from conda, do nothing here.
+# If you accidentally sourced adsenv.sh before, you can unset overrides like:
+#   unset BABEL_DATADIR OB_PLUGIN_PATH
+
+# ---- run the Python 3 wrapper ---------------------------------------
+FTLK_PY="$ADFR_HOME/CCSBpckgs/ADFR/bin/ftlk.py"
+if [[ ! -f "$FTLK_PY" ]]; then
+  echo "[ftlk] ERROR: ftlk.py not found at $FTLK_PY" >&2
+  exit 4
+fi
+
+exec "$PY3" "$FTLK_PY" "$@"
+
